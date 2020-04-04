@@ -247,6 +247,11 @@ int packet__write(struct mosquitto *mosq)
 						|| errno == WSAENOTCONN
 #endif
 						){
+
+					if(errno == COMPAT_EWOULDBLOCK && mosq->on_write_block != NULL)
+					{
+						mosq->on_write_block(mosq, mosq->sock, mosq->write_block_userdata);
+					}
 					pthread_mutex_unlock(&mosq->current_out_packet_mutex);
 					return MOSQ_ERR_SUCCESS;
 				}else{

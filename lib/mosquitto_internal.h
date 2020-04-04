@@ -346,6 +346,10 @@ struct mosquitto {
 #ifdef WITH_EPOLL
 	uint32_t events;
 #endif
+#ifdef WITH_BROKER_LIB
+	void(*on_write_block)(struct mosquitto *, void *write_block_userdata, mosq_sock_t sock);
+	void* write_block_userdata;
+#endif 
 };
 
 #define STREMPTY(str) (str[0] == '\0')
