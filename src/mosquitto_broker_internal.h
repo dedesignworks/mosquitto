@@ -451,6 +451,10 @@ struct mosquitto_db{
 #ifdef WITH_EPOLL
 	int epollfd;
 #endif
+	time_t start_time;
+#ifdef WITH_PERSISTENCE
+	time_t last_backup;
+#endif
 };
 
 enum mosquitto__bridge_direction{
