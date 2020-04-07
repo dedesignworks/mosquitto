@@ -317,6 +317,16 @@ struct mosquitto__config {
 	struct mosquitto__security_options security_options;
 };
 
+struct mosquitto_msg_store;
+struct mosquitto_db;
+
+typedef void (*sub__on_send)(
+	struct mosquitto_db *db, 
+	struct mosquitto *context, 
+	const char *topic, 
+	struct mosquitto_msg_store *store, 
+	void* plugin_context);
+
 struct mosquitto__subleaf {
 	struct mosquitto__subleaf *prev;
 	struct mosquitto__subleaf *next;
@@ -325,6 +335,8 @@ struct mosquitto__subleaf {
 	uint8_t qos;
 	bool no_local;
 	bool retain_as_published;
+	sub__on_send on_send;
+	void *plugin_context;
 };
 
 
@@ -426,6 +438,9 @@ struct mosquitto_db{
 	struct mosquitto *contexts_by_id;
 	struct mosquitto *contexts_by_sock;
 	struct mosquitto *contexts_for_free;
+#ifdef WITH_BROKER_LIB
+	struct mosquitto *contexts_by_plugin;
+#endif
 #ifdef WITH_BRIDGE
 	struct mosquitto **bridges;
 #endif
@@ -640,6 +655,7 @@ void sys_tree__update(struct mosquitto_db *db, int interval, time_t start_time);
  * Subscription functions
  * ============================================================ */
 int sub__add(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root);
+int sub__add_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root, sub__on_send on_send, void* plugin_context);
 struct mosquitto__subhier *sub__add_hier_entry(struct mosquitto__subhier *parent, struct mosquitto__subhier **sibling, const char *topic, size_t len);
 int sub__remove(struct mosquitto_db *db, struct mosquitto *context, const char *sub, struct mosquitto__subhier *root, uint8_t *reason);
 void sub__tree_print(struct mosquitto__subhier *root, int level);

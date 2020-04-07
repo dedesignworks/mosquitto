@@ -102,7 +102,9 @@ static int subs__send(struct mosquitto_db *db, struct mosquitto__subleaf *leaf, 
 		if(leaf->identifier){
 			mosquitto_property_add_varint(&properties, MQTT_PROP_SUBSCRIPTION_IDENTIFIER, leaf->identifier);
 		}
-		if(db__message_insert(db, leaf->context, mid, mosq_md_out, msg_qos, client_retain, stored, properties) == 1){
+		if(leaf->on_send != NULL){
+			leaf->on_send(db, leaf->context, topic, stored, leaf->plugin_context);
+		} else if(db__message_insert(db, leaf->context, mid, mosq_md_out, msg_qos, client_retain, stored, properties) == 1){
 			return 1;
 		}
 	}else{
@@ -423,7 +425,7 @@ static int sub__add_shared(struct mosquitto_db *db, struct mosquitto *context, i
 }
 
 
-static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier)
+static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subleaf *newleaf = NULL;
 	struct mosquitto__subhier **subs;
@@ -431,6 +433,8 @@ static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, i
 	int rc;
 
 	rc = sub__add_leaf(context, qos, identifier, options, &subhier->subs, &newleaf);
+	newleaf->on_send = on_send;
+	newleaf->plugin_context = plugin_context;
 	if(rc > 0){
 		return rc;
 	}
@@ -468,7 +472,7 @@ static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, i
 }
 
 
-static int sub__add_context(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, struct sub__token *tokens, char *sharename)
+static int sub__add_context(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, struct sub__token *tokens, char *sharename, sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subhier *branch;
 
@@ -489,7 +493,7 @@ static int sub__add_context(struct mosquitto_db *db, struct mosquitto *context, 
 		if(sharename){
 			return sub__add_shared(db, context, qos, identifier, options, subhier, sharename);
 		}else{
-			return sub__add_normal(db, context, qos, identifier, options, subhier);
+			return sub__add_normal(db, context, qos, identifier, options, subhier, on_send, plugin_context);
 		}
 	}else{
 		return MOSQ_ERR_SUCCESS;
@@ -708,6 +712,11 @@ struct mosquitto__subhier *sub__add_hier_entry(struct mosquitto__subhier *parent
 
 int sub__add(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root)
 {
+	return sub__add_plugin(db, context, sub, qos, identifier, options, root, NULL, NULL);
+}
+
+int sub__add_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root, sub__on_send on_send, void* plugin_context)
+{
 	int rc = 0;
 	struct mosquitto__subhier *subhier;
 	struct sub__token *tokens = NULL, *t;
@@ -750,7 +759,7 @@ int sub__add(struct mosquitto_db *db, struct mosquitto *context, const char *sub
 		}
 
 	}
-	rc = sub__add_context(db, context, qos, identifier, options, subhier, tokens, sharename);
+	rc = sub__add_context(db, context, qos, identifier, options, subhier, tokens, sharename, on_send, plugin_context);
 
 	sub__topic_tokens_free(tokens);
 
@@ -824,7 +833,7 @@ int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const ch
 			/* We have a message that needs to be retained, so ensure that the subscription
 			 * tree for its topic exists.
 			 */
-			sub__add_context(db, NULL, 0, 0, 0, subhier, tokens, NULL);
+			sub__add_context(db, NULL, 0, 0, 0, subhier, tokens, NULL, NULL, NULL);
 		}
 		rc = sub__search(db, subhier, tokens, source_id, topic, qos, retain, *stored, true);
 	}
