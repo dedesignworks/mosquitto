@@ -325,6 +325,7 @@ typedef int (*sub__on_send)(
 	struct mosquitto *context, 
 	const char *topic, 
 	struct mosquitto_msg_store *store, 
+	mosquitto_property *properties,
 	void* plugin_context);
 
 struct mosquitto__subleaf {

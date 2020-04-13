@@ -103,7 +103,7 @@ static int subs__send(struct mosquitto_db *db, struct mosquitto__subleaf *leaf, 
 			mosquitto_property_add_varint(&properties, MQTT_PROP_SUBSCRIPTION_IDENTIFIER, leaf->identifier);
 		}
 		if(leaf->on_send != NULL){
-			leaf->on_send(db, leaf->context, topic, stored, leaf->plugin_context);
+			leaf->on_send(db, leaf->context, topic, stored, properties, leaf->plugin_context);
 		} else if(db__message_insert(db, leaf->context, mid, mosq_md_out, msg_qos, client_retain, stored, properties) == 1){
 			return 1;
 		}
@@ -1059,7 +1059,7 @@ static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *b
 	
 	if(on_send != NULL)
 	{
-		return on_send(db, context, retained->topic, retained, plugin_context);
+		return on_send(db, context, retained->topic, retained, properties, plugin_context);
 	}
 	else
 	{
