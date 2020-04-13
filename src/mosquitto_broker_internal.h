@@ -320,7 +320,7 @@ struct mosquitto__config {
 struct mosquitto_msg_store;
 struct mosquitto_db;
 
-typedef void (*sub__on_send)(
+typedef int (*sub__on_send)(
 	struct mosquitto_db *db, 
 	struct mosquitto *context, 
 	const char *topic, 
@@ -661,6 +661,7 @@ int sub__remove(struct mosquitto_db *db, struct mosquitto *context, const char *
 void sub__tree_print(struct mosquitto__subhier *root, int level);
 int sub__clean_session(struct mosquitto_db *db, struct mosquitto *context);
 int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier);
+int sub__retain_queue_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, sub__on_send on_send, void* plugin_context);
 int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored);
 
 /* ============================================================

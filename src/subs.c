@@ -994,7 +994,7 @@ void sub__tree_print(struct mosquitto__subhier *root, int level)
 	}
 }
 
-static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *branch, struct mosquitto *context, int sub_qos, uint32_t subscription_identifier, time_t now)
+static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *branch, struct mosquitto *context, int sub_qos, uint32_t subscription_identifier, time_t now, sub__on_send on_send, void* plugin_context)
 {
 	int rc = 0;
 	int qos;
@@ -1056,10 +1056,18 @@ static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *b
 	if(subscription_identifier > 0){
 		mosquitto_property_add_varint(&properties, MQTT_PROP_SUBSCRIPTION_IDENTIFIER, subscription_identifier);
 	}
-	return db__message_insert(db, context, mid, mosq_md_out, qos, true, retained, properties);
+	
+	if(on_send != NULL)
+	{
+		return on_send(db, context, retained->topic, retained, plugin_context);
+	}
+	else
+	{
+		return db__message_insert(db, context, mid, mosq_md_out, qos, true, retained, properties);
+	}
 }
 
-static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *subhier, struct sub__token *tokens, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, time_t now, int level)
+static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *subhier, struct sub__token *tokens, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, time_t now, int level, sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subhier *branch, *branch_tmp;
 	int flag = 0;
@@ -1072,26 +1080,26 @@ static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *su
 			 */
 			flag = -1;
 			if(branch->retained){
-				retain__process(db, branch, context, sub_qos, subscription_identifier, now);
+				retain__process(db, branch, context, sub_qos, subscription_identifier, now, on_send, plugin_context);
 			}
 			if(branch->children){
-				retain__search(db, branch, tokens, context, sub, sub_qos, subscription_identifier, now, level+1);
+				retain__search(db, branch, tokens, context, sub, sub_qos, subscription_identifier, now, level+1, on_send, plugin_context);
 			}
 		}
 	}else{
 		if(!strcmp(tokens->topic, "+")){
 			HASH_ITER(hh, subhier->children, branch, branch_tmp){
 				if(tokens->next){
-					if(retain__search(db, branch, tokens->next, context, sub, sub_qos, subscription_identifier, now, level+1) == -1
+					if(retain__search(db, branch, tokens->next, context, sub, sub_qos, subscription_identifier, now, level+1, on_send, plugin_context) == -1
 							|| (tokens->next && !strcmp(tokens->next->topic, "#") && level>0)){
 
 						if(branch->retained){
-							retain__process(db, branch, context, sub_qos, subscription_identifier, now);
+							retain__process(db, branch, context, sub_qos, subscription_identifier, now, on_send, plugin_context);
 						}
 					}
 				}else{
 					if(branch->retained){
-						retain__process(db, branch, context, sub_qos, subscription_identifier, now);
+						retain__process(db, branch, context, sub_qos, subscription_identifier, now, on_send, plugin_context);
 					}
 				}
 			}
@@ -1099,16 +1107,16 @@ static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *su
 			HASH_FIND(hh, subhier->children, tokens->topic, tokens->topic_len, branch);
 			if(branch){
 				if(tokens->next){
-					if(retain__search(db, branch, tokens->next, context, sub, sub_qos, subscription_identifier, now, level+1) == -1
+					if(retain__search(db, branch, tokens->next, context, sub, sub_qos, subscription_identifier, now, level+1, on_send, plugin_context) == -1
 							|| (tokens->next && !strcmp(tokens->next->topic, "#") && level>0)){
 
 						if(branch->retained){
-							retain__process(db, branch, context, sub_qos, subscription_identifier, now);
+							retain__process(db, branch, context, sub_qos, subscription_identifier, now, on_send, plugin_context);
 						}
 					}
 				}else{
 					if(branch->retained){
-						retain__process(db, branch, context, sub_qos, subscription_identifier, now);
+						retain__process(db, branch, context, sub_qos, subscription_identifier, now, on_send, plugin_context);
 					}
 				}
 			}
@@ -1118,6 +1126,11 @@ static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *su
 }
 
 int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier)
+{
+	return sub__retain_queue_plugin(db, context, sub, sub_qos, subscription_identifier, NULL, NULL);
+}
+
+int sub__retain_queue_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subhier *subhier;
 	struct sub__token *tokens = NULL, *tail;
@@ -1133,7 +1146,7 @@ int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const 
 
 	if(subhier){
 		now = time(NULL);
-		retain__search(db, subhier, tokens, context, sub, sub_qos, subscription_identifier, now, 0);
+		retain__search(db, subhier, tokens, context, sub, sub_qos, subscription_identifier, now, 0, on_send, plugin_context);
 	}
 	while(tokens){
 		tail = tokens->next;
