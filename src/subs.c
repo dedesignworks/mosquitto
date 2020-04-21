@@ -425,7 +425,7 @@ static int sub__add_shared(struct mosquitto_db *db, struct mosquitto *context, i
 }
 
 
-static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, sub__on_send on_send, void* plugin_context)
+static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, FUNC_plugin_sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subleaf *newleaf = NULL;
 	struct mosquitto__subhier **subs;
@@ -472,7 +472,7 @@ static int sub__add_normal(struct mosquitto_db *db, struct mosquitto *context, i
 }
 
 
-static int sub__add_context(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, struct sub__token *tokens, char *sharename, sub__on_send on_send, void* plugin_context)
+static int sub__add_context(struct mosquitto_db *db, struct mosquitto *context, int qos, uint32_t identifier, int options, struct mosquitto__subhier *subhier, struct sub__token *tokens, char *sharename, FUNC_plugin_sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subhier *branch;
 
@@ -715,7 +715,7 @@ int sub__add(struct mosquitto_db *db, struct mosquitto *context, const char *sub
 	return sub__add_plugin(db, context, sub, qos, identifier, options, root, NULL, NULL);
 }
 
-int sub__add_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root, sub__on_send on_send, void* plugin_context)
+int sub__add_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root, FUNC_plugin_sub__on_send on_send, void* plugin_context)
 {
 	int rc = 0;
 	struct mosquitto__subhier *subhier;
@@ -994,7 +994,7 @@ void sub__tree_print(struct mosquitto__subhier *root, int level)
 	}
 }
 
-static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *branch, struct mosquitto *context, int sub_qos, uint32_t subscription_identifier, time_t now, sub__on_send on_send, void* plugin_context)
+static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *branch, struct mosquitto *context, int sub_qos, uint32_t subscription_identifier, time_t now, FUNC_plugin_sub__on_send on_send, void* plugin_context)
 {
 	int rc = 0;
 	int qos;
@@ -1067,7 +1067,7 @@ static int retain__process(struct mosquitto_db *db, struct mosquitto__subhier *b
 	}
 }
 
-static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *subhier, struct sub__token *tokens, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, time_t now, int level, sub__on_send on_send, void* plugin_context)
+static int retain__search(struct mosquitto_db *db, struct mosquitto__subhier *subhier, struct sub__token *tokens, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, time_t now, int level, FUNC_plugin_sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subhier *branch, *branch_tmp;
 	int flag = 0;
@@ -1130,7 +1130,7 @@ int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const 
 	return sub__retain_queue_plugin(db, context, sub, sub_qos, subscription_identifier, NULL, NULL);
 }
 
-int sub__retain_queue_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, sub__on_send on_send, void* plugin_context)
+int sub__retain_queue_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, FUNC_plugin_sub__on_send on_send, void* plugin_context)
 {
 	struct mosquitto__subhier *subhier;
 	struct sub__token *tokens = NULL, *tail;
