@@ -347,8 +347,8 @@ struct mosquitto {
 	uint32_t events;
 #endif
 #ifdef WITH_BROKER_LIB
-	void(*on_write_block)(struct mosquitto *, mosq_sock_t sock, void *write_block_userdata);
-	void* write_block_userdata;
+	void *plugin_context;
+	void(*on_write_block)(struct mosquitto *, mosq_sock_t sock, void *plugin_context);
 #endif 
 };
 

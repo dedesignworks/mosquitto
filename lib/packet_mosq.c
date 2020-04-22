@@ -250,7 +250,7 @@ int packet__write(struct mosquitto *mosq)
 
 					if(errno == COMPAT_EWOULDBLOCK && mosq->on_write_block != NULL)
 					{
-						mosq->on_write_block(mosq, mosq->sock, mosq->write_block_userdata);
+						mosq->on_write_block(mosq, mosq->sock, mosq->plugin_context);
 					}
 					pthread_mutex_unlock(&mosq->current_out_packet_mutex);
 					return MOSQ_ERR_SUCCESS;

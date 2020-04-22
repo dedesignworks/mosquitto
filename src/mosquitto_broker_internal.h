@@ -162,14 +162,6 @@ typedef int (*FUNC_auth_plugin_unpwd_check_v2)(void *, const char *, const char 
 typedef int (*FUNC_auth_plugin_psk_key_get_v2)(void *, const char *, const char *, char *, int);
 
 
-typedef int (*FUNC_plugin_sub__on_send)(
-	struct mosquitto_db *db, 
-	struct mosquitto *context, 
-	const char *topic, 
-	struct mosquitto_msg_store *store, 
-	mosquitto_property *properties,
-	void* plugin_context);
-
 enum mosquitto_msg_origin{
 	mosq_mo_client = 0,
 	mosq_mo_broker = 1
@@ -279,6 +271,18 @@ struct mosquitto__listener {
 	struct mosquitto__unpwd *psk_id;
 };
 
+struct mosquitto_msg_store;
+struct mosquitto_db;
+typedef int (*FUNC_broker_plugin_sub_on_send)(
+	struct mosquitto_db *db, 
+	struct mosquitto *context, 
+	const char *topic, 
+	struct mosquitto_msg_store *store, 
+	mosquitto_property *properties,
+	void* plugin_context);
+
+typedef void (*FUNC_broker_plugin_log)(void* plugin_context, int priority, const char *message, int length);
+
 struct mosquitto__config {
 	bool allow_duplicate_messages;
 	int autosave_interval;
@@ -324,7 +328,8 @@ struct mosquitto__config {
 	int bridge_count;
 #endif
 #ifdef WITH_BROKER_LIB
-	
+	FUNC_broker_plugin_log plugin_log;
+	void* plugin_context;
 #endif
 	struct mosquitto__security_options security_options;
 };
@@ -342,7 +347,7 @@ struct mosquitto__subleaf {
 	uint8_t qos;
 	bool no_local;
 	bool retain_as_published;
-	FUNC_plugin_sub__on_send on_send;
+	FUNC_broker_plugin_sub_on_send on_send;
 	void *plugin_context;
 };
 
@@ -662,13 +667,13 @@ void sys_tree__update(struct mosquitto_db *db, int interval, time_t start_time);
  * Subscription functions
  * ============================================================ */
 int sub__add(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root);
-int sub__add_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root, FUNC_plugin_sub__on_send on_send, void* plugin_context);
+int sub__add_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int qos, uint32_t identifier, int options, struct mosquitto__subhier **root, FUNC_broker_plugin_sub_on_send on_send, void* plugin_context);
 struct mosquitto__subhier *sub__add_hier_entry(struct mosquitto__subhier *parent, struct mosquitto__subhier **sibling, const char *topic, size_t len);
 int sub__remove(struct mosquitto_db *db, struct mosquitto *context, const char *sub, struct mosquitto__subhier *root, uint8_t *reason);
 void sub__tree_print(struct mosquitto__subhier *root, int level);
 int sub__clean_session(struct mosquitto_db *db, struct mosquitto *context);
 int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier);
-int sub__retain_queue_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, FUNC_plugin_sub__on_send on_send, void* plugin_context);
+int sub__retain_queue_plugin(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier, FUNC_broker_plugin_sub_on_send on_send, void* plugin_context);
 int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored);
 
 /* ============================================================
