@@ -204,6 +204,12 @@ struct mosquitto_msg_data{
 	uint16_t inflight_maximum;
 };
 
+#ifdef WITH_BROKER_LIB
+typedef void * mosq_plugin_context_t;
+typedef void (*FUNC_plugin_on_accept)(struct mosquitto * mosq_context, mosq_sock_t sock, mosq_plugin_context_t plugin_context);
+typedef void (*FUNC_plugin_on_write_block)(struct mosquitto * mosq_context, mosq_sock_t sock, mosq_plugin_context_t plugin_context);
+typedef void (*FUNC_plugin_on_close)(struct mosquitto * mosq_context, mosq_sock_t sock, mosq_plugin_context_t plugin_context);
+#endif
 
 struct mosquitto {
 	mosq_sock_t sock;
@@ -348,7 +354,10 @@ struct mosquitto {
 #endif
 #ifdef WITH_BROKER_LIB
 	void *plugin_context;
-	void(*on_write_block)(struct mosquitto *, mosq_sock_t sock, void *plugin_context);
+
+	FUNC_plugin_on_write_block on_write_block;
+	FUNC_plugin_on_close on_close;
+	// On_close()
 #endif 
 };
 

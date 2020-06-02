@@ -221,6 +221,10 @@ int net__socket_close(struct mosquitto *mosq)
 		if(mosq->sock != INVALID_SOCKET){
 #ifdef WITH_BROKER
 			HASH_DELETE(hh_sock, db->contexts_by_sock, mosq);
+			if(mosq->on_close)
+			{
+				mosq->on_close(mosq, mosq->sock, mosq->plugin_context);
+			}
 #endif
 			rc = COMPAT_CLOSE(mosq->sock);
 			mosq->sock = INVALID_SOCKET;

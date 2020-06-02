@@ -94,7 +94,7 @@ WITH_SHARED_LIBRARIES:=yes
 #WITH_ADNS:=yes
 
 # Build with epoll support.
-WITH_EPOLL:=yes
+# WITH_EPOLL:=yes
 
 # Build with bundled uthash.h
 WITH_BUNDLED_DEPS:=yes
